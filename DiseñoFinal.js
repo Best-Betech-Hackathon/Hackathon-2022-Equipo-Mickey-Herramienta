@@ -24,7 +24,7 @@ function dispararEnemigo(state, control) {
 	control.GUN_TURN = 0.3 * anguloArmaDif;
 
 	//Disparar
-	if(Math.abs(anguloArmaDif) < 1) { control.SHOOT = 0.5;}
+	if(Math.abs(anguloArmaDif) < 1) { control.SHOOT = 0.2;}
 
 }
 
@@ -85,25 +85,18 @@ function huirEnemigo(state, control) {
 	control.THROTTLE = -1
 }
 
-function explorarCampo(state, control) {
+function choquePared(state, control){
+	if (state.collisions.wall){
+  	tiempoGirar = 10;
+    control.BOOST = 1;
+  } 
+  if (tiempoGirar>0){
+ 		tiempoGirar--;
+    control.TURN=1;
+  }else{
+  	control.TURN= 0;
+  }
   
-	if (state.radar.enemy) {
-	// control.THROTTLE = 0;
-	return;
-	} else {
-	control.SHOOT = 0.5;
-    	control.THROTTLE = 1;}
-
-	if(state.collisions.wall) {
-	tiempoGirar = 10;
-	}
-
-	if (tiempoGirar > 0) {
-		control.TURN = 1;
-		tiempoGirar--;
-	} else {
-		control.TURN = 0;
-	}
 }
 
 tank.init(function(settings, info) {
@@ -111,11 +104,10 @@ tank.init(function(settings, info) {
 });
 
 tank.loop(function(state, control) {
-  
+  choquePared(state, control);
 	buscarEnemigo(state, control);
 	dispararEnemigo(state, control);
 	seguirEnemigo(state, control);
-	explorarCampo(state, control);
 });
 
 
