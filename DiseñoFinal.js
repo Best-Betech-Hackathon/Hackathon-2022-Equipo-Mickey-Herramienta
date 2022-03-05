@@ -2,17 +2,26 @@ importScripts('lib/tank.js');
 
 
 var tiempoGirar;
+var timer = 0;
 
 function dispararEnemigo(state, control) {
-
 	let enemy = state.radar.enemy;
 	if (!enemy){return;}
 
 	let velocidadBala = 4;
 	let distancia = Math.distance(state.x, state.y, enemy.x, enemy.y)
 	//control.RADAR_TURN = 0;
-
-	//Predecir Posición
+    if (distancia>100){
+        let targetY=enemy.y;
+        let targetX=enemy.x;
+        let anguloObjetivo = Math.deg.atan2(targetY - state.y, targetX - state.x);
+        let anguloArma = Math.deg.normalize(anguloObjetivo - state.angle);
+        let anguloArmaDif = Math.deg.normalize(anguloArma - state.gun.angle);
+        var anguloArmaDifCos = Math.deg.normalize(anguloArmaDif + 20*Math.sin(timer*2));
+        control.GUN_TURN = 0.3 * anguloArmaDifCos;
+        control.SHOOT = 0.1;
+    }if (distancia<100 && distancia>25){
+        //Predecir Posición
 	let tiempoBala = distancia / velocidadBala;
 	let targetX = enemy.x + tiempoBala * enemy.speed * Math.cos(Math.deg2rad(enemy.angle));
 	let targetY = enemy.y + tiempoBala * enemy.speed * Math.sin(Math.deg2rad(enemy.angle));
@@ -24,15 +33,28 @@ function dispararEnemigo(state, control) {
 	control.GUN_TURN = 0.3 * anguloArmaDif;
 
 	//Disparar
-	if(Math.abs(anguloArmaDif) < 1) { control.SHOOT = 0.2;}
+	control.SHOOT = 0.2;
+    }else{
+           //Predecir Posición
+	let tiempoBala = distancia / velocidadBala;
+	let targetX = enemy.x + tiempoBala * enemy.speed * Math.cos(Math.deg2rad(enemy.angle));
+	let targetY = enemy.y + tiempoBala * enemy.speed * Math.sin(Math.deg2rad(enemy.angle));
 
+	//Apuntar
+	let anguloObjetivo = Math.deg.atan2(targetY - state.y, targetX - state.x);
+	let anguloArma = Math.deg.normalize(anguloObjetivo - state.angle);
+	let anguloArmaDif = Math.deg.normalize(anguloArma - state.gun.angle);
+	control.GUN_TURN = 0.3 * anguloArmaDif;
+    //Disparar
+	control.SHOOT = 0.;
+    }
 }
 
 function buscarEnemigo (state, control){
 	if(!state.radar.enemy) { 
 		// Gira el radar
   	control.RADAR_TURN = 1;
-	control.GUN_TURN = 0;
+	control.GUN_TURN = 0
   } else{
   	// Mantener al enemigo en el haz
   	let anguloObjetivo = Math.deg.atan2(state.radar.enemy.y - state.y, state.radar.enemy.x - state.x);
@@ -55,15 +77,6 @@ function seguirEnemigo(state, control) {
 	let distancia = Math.distance(state.x, state.y, state.radar.enemy.x, state.radar.enemy.y)
 	let distanciaDif = distancia - 150;
 	control.THROTTLE = (distanciaDif/50);
-  // control.TURN = 1
-  var enemyAngle = Math.deg.atan2(
-      state.radar.enemy.y - state.y,
-      state.radar.enemy.x - state.x
-    )
-    // cal
-  bodyAngleDelta = Math.deg.normalize(enemyAngle - 90 - state.angle);
-   if(Math.abs(bodyAngleDelta) > 90) bodyAngleDelta += 180;
-   control.TURN = bodyAngleDelta * 0.2;
 
 }
 
@@ -76,8 +89,18 @@ function huirEnemigo(state, control) {
 	let anguloCuerpoDif = Math.deg.normalize(anguloObjetivo - state.angle);
 	
   //Que gire el cuerpo en dirección de el enemigo
-	control.TURN = anguloCuerpoDif;
-  
+  if(state.collisions.wall) {
+	tiempoGirar = 10;
+	}
+
+	if (tiempoGirar > 0) {
+    control.BOOST = 1
+		control.TURN = 1;
+		tiempoGirar--;
+	} else {
+		control.TURN = anguloCuerpoDif - 90;
+    control.BOOST = 0
+	}
 	//movemos manteniendo la distancia
 	let distancia = Math.distance(state.x, state.y, state.radar.enemy.x, state.radar.enemy.y)
 	// let distanciaDif = distancia - 150;
@@ -85,29 +108,39 @@ function huirEnemigo(state, control) {
 	control.THROTTLE = -1
 }
 
-function choquePared(state, control){
-	if (state.collisions.wall){
-  	tiempoGirar = 10;
-    control.BOOST = 1;
-  } 
-  if (tiempoGirar>0){
- 		tiempoGirar--;
-    control.TURN=1;
-  }else{
-  	control.TURN= 0;
-  }
+function explorarCampo(state, control) {
   
+	if (state.radar.enemy) {
+	// control.THROTTLE = 0;
+	return;
+	} else {
+    let anguloObjetivo = state.angle;
+    let anguloArma = Math.deg.normalize(anguloObjetivo - state.angle);
+    let anguloArmaDif = Math.deg.normalize(anguloArma - state.gun.angle);
+    var anguloArmaDifCos = Math.deg.normalize(anguloArmaDif + 20*Math.sin(timer*2));
+    control.GUN_TURN = 0.3 * anguloArmaDifCos;
+		control.SHOOT = 0.1;
+    control.THROTTLE = 1;
+    control.TURN = 90;
+  }
+
+	if(state.collisions.wall) {
+	tiempoGirar = 10;
+	}
+
+	if (tiempoGirar > 0) {
+		control.TURN = 1;
+		tiempoGirar--;
+	} else {
+		control.TURN = 0;
+	}
 }
 
-tank.init(function(settings, info) {
-  tiempoGirar = 0;
-});
-
 tank.loop(function(state, control) {
-  choquePared(state, control);
+  
 	buscarEnemigo(state, control);
 	dispararEnemigo(state, control);
-	seguirEnemigo(state, control);
+	huirEnemigo(state, control);
+	explorarCampo(state, control);
+  timer++;
 });
-
-
