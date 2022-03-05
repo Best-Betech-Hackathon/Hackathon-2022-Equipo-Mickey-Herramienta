@@ -46,7 +46,7 @@ function dispararEnemigo(state, control) {
 	let anguloArmaDif = Math.deg.normalize(anguloArma - state.gun.angle);
 	control.GUN_TURN = 0.3 * anguloArmaDif;
     //Disparar
-	control.SHOOT = 0.;
+	control.SHOOT = 0.2;
     }
 }
 
@@ -94,8 +94,8 @@ function huirEnemigo(state, control) {
 	}
 
 	if (tiempoGirar > 0) {
-    control.BOOST = 1
-		control.TURN = 1;
+    control.BOOST = 1;
+		control.TURN = 90;
 		tiempoGirar--;
 	} else {
 		control.TURN = anguloCuerpoDif - 90;
